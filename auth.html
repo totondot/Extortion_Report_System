@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Authentication</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .form-container {
+            transition: transform 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-sm bg-white rounded-xl shadow-2xl p-8 transform transition-transform duration-300">
+        <!-- Tab buttons -->
+        <div class="flex mb-6">
+            <button id="login-tab" class="flex-1 py-3 text-center text-lg font-bold text-white bg-blue-600 rounded-tl-xl transition-colors duration-200">Log In</button>
+            <button id="signup-tab" class="flex-1 py-3 text-center text-lg font-bold text-gray-700 bg-gray-200 rounded-tr-xl transition-colors duration-200">Sign Up</button>
+        </div>
+
+        <!-- Login Form -->
+        <div id="login-form-container" class="form-container">
+            <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Log In</h1>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="login-email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="login-email" name="email" required class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200">
+                </div>
+                <div>
+                    <label for="login-password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="login-password" name="password" required class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200">
+                </div>
+                <button type="submit" class="w-full py-3 px-4 rounded-lg bg-blue-600 text-white text-lg font-semibold shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200">Log In</button>
+                <p id="login-message" class="text-center text-sm font-medium mt-2"></p>
+            </form>
+        </div>
+
+        <!-- Sign Up Form -->
+        <div id="signup-form-container" class="form-container hidden">
+            <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Sign Up</h1>
+            <form id="signup-form" class="space-y-4">
+                <div>
+                    <label for="signup-name" class="block text-sm font-medium text-gray-700">Name</label>
+                    <input type="text" id="signup-name" name="name" required class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200">
+                </div>
+                <div>
+                    <label for="signup-email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="signup-email" name="email" required class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200">
+                </div>
+                <div>
+                    <label for="signup-password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="signup-password" name="password" required class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200">
+                </div>
+                <button type="submit" class="w-full py-3 px-4 rounded-lg bg-blue-600 text-white text-lg font-semibold shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200">Sign Up</button>
+                <p id="signup-message" class="text-center text-sm font-medium mt-2"></p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginTab = document.getElementById('login-tab');
+            const signupTab = document.getElementById('signup-tab');
+            const loginFormContainer = document.getElementById('login-form-container');
+            const signupFormContainer = document.getElementById('signup-form-container');
+            const loginForm = document.getElementById('login-form');
+            const signupForm = document.getElementById('signup-form');
+            const loginMessage = document.getElementById('login-message');
+            const signupMessage = document.getElementById('signup-message');
+
+            // Switch between login and signup forms
+            loginTab.addEventListener('click', () => {
+                loginTab.classList.replace('bg-gray-200', 'bg-blue-600');
+                loginTab.classList.replace('text-gray-700', 'text-white');
+                signupTab.classList.replace('bg-blue-600', 'bg-gray-200');
+                signupTab.classList.replace('text-white', 'text-gray-700');
+                loginFormContainer.classList.remove('hidden');
+                signupFormContainer.classList.add('hidden');
+                loginMessage.textContent = '';
+                signupMessage.textContent = '';
+            });
+
+            signupTab.addEventListener('click', () => {
+                signupTab.classList.replace('bg-gray-200', 'bg-blue-600');
+                signupTab.classList.replace('text-gray-700', 'text-white');
+                loginTab.classList.replace('bg-blue-600', 'bg-gray-200');
+                loginTab.classList.replace('text-white', 'text-gray-700');
+                signupFormContainer.classList.remove('hidden');
+                loginFormContainer.classList.add('hidden');
+                loginMessage.textContent = '';
+                signupMessage.textContent = '';
+            });
+
+            // Handle login form submission
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(loginForm);
+                const data = Object.fromEntries(formData.entries());
+
+                try {
+                    const response = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        localStorage.setItem('sessionId', result.sessionId);
+                        window.location.href = '/complaint-form';
+                    } else {
+                        loginMessage.textContent = result.message;
+                        loginMessage.classList.add('text-red-500');
+                        loginMessage.classList.remove('text-green-500');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    loginMessage.textContent = 'An error occurred. Please try again later.';
+                    loginMessage.classList.add('text-red-500');
+                    loginMessage.classList.remove('text-green-500');
+                }
+            });
+
+            // Handle signup form submission
+            signupForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(signupForm);
+                const data = Object.fromEntries(formData.entries());
+
+                try {
+                    const response = await fetch('/api/signup', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        signupMessage.textContent = result.message;
+                        signupMessage.classList.add('text-green-500');
+                        signupMessage.classList.remove('text-red-500');
+
+                        // Automatically redirect to the login page
+                        setTimeout(() => {
+                           window.location.href = '/';
+                        }, 2000); // 2-second delay
+                    } else {
+                        signupMessage.textContent = result.message;
+                        signupMessage.classList.add('text-red-500');
+                        signupMessage.classList.remove('text-green-500');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    signupMessage.textContent = 'An error occurred. Please try again later.';
+                    signupMessage.classList.add('text-red-500');
+                    signupMessage.classList.remove('text-green-500');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
