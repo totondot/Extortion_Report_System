@@ -3,55 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home</title>
+    <title>User Home</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
         }
     </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
-    <div class="bg-white p-8 rounded-lg shadow-lg max-w-2xl w-full">
-        <h1 class="text-4xl font-bold text-center text-gray-800 mb-6">Welcome to the Extortion Reporting Platform</h1>
-        <p class="text-center text-gray-600 mb-8">
-            This is the central hub of our application. From here, you can access all the core features to report extortion and manage your complaints.
-        </p>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-lg text-center">
+        <div class="flex justify-end mb-4">
+            <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-150 ease-in-out">
+                Logout
+            </button>
+        </div>
+        <h1 class="text-4xl font-bold text-gray-800 mb-2">Welcome!</h1>
+        <p class="text-gray-600 mb-6" id="welcomeMessage">You are logged in.</p>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <!-- Submit Complaint Feature -->
-            <a href="/complaint-form" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-8 px-6 rounded-lg text-center transition-colors duration-200 flex flex-col items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m-6 4h6m4-12a4 4 0 01-4 4H9a4 4 0 01-4-4V7a4 4 0 014-4h2a4 4 0 014 4v5a4 4 0 004 4v0a4 4 0 004-4V7a4 4 0 014-4h2a4 4 0 014 4v5a4 4 0 004 4v0a4 4 0 004-4V7a4 4 0 014-4z" />
-                </svg>
-                <span class="text-xl">Submit a Complaint</span>
-            </a>
-
-            <!-- View Complaints Feature -->
-            <a href="/my-complaints" class="bg-green-500 hover:bg-green-600 text-white font-bold py-8 px-6 rounded-lg text-center transition-colors duration-200 flex flex-col items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17.25v-4.5a.75.75 0 011.5 0v4.5m-1.5 0a.75.75 0 00-.75.75V21a.75.75 0 00.75.75h9a.75.75 0 00.75-.75V17.25m-1.5 0a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75m4.5 0a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75m0 0a.75.75 0 01-.75.75h-1.5a.75.75 0 01-.75-.75m0 0a.75.75 0 01-.75-.75V11a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75v5.25m0-4.5a.75.75 0 00-.75-.75H13a.75.75 0 00-.75.75v4.5a.75.75 0 00.75.75h1.5a.75.75 0 00.75-.75V12.75" />
-                </svg>
-                <span class="text-xl">View My Complaints</span>
-            </a>
-
-            <!-- Analytics and Reports Feature -->
-            <a href="/analytics" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-8 px-6 rounded-lg text-center transition-colors duration-200 flex flex-col items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-8v8m-4-8v8m-4-8v8m-4-8v8m-4-8v8M4 20h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span class="text-xl">Analytics & Reports</span>
-            </a>
-
-            <!-- Admin Dashboard Feature -->
-            <a href="/admin" class="bg-red-500 hover:bg-red-600 text-white font-bold py-8 px-6 rounded-lg text-center transition-colors duration-200 flex flex-col items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-.957 1.65-1.996 2.5-1.996h.025a1 1 0 01.995 1.006v.75a1 1 0 00.995 1.006h2.75a1 1 0 011.005 1.006v3.25a1 1 0 001.005 1.006h.75a1 1 0 011.005 1.006v.025c0 .85-.939 2.074-1.996 2.5l-.75.334a1 1 0 00-.75 1.006v2.75a1 1 0 01-1.006 1.005h-3.25a1 1 0 00-1.006 1.005v.75a1 1 0 01-1.006 1.005h-.025c-.85 0-2.074-.939-2.5-1.996l-.334-.75a1 1 0 00-1.006-.75h-2.75a1 1 0 01-1.005-1.006v-3.25a1 1 0 00-1.005-1.006h-.75a1 1 0 01-1.005-1.006v-.025c0-.85.939-2.074 1.996-2.5l.75-.334a1 1 0 00.75-1.006v-2.75a1 1 0 011.006-1.005h3.25a1 1 0 001.006-1.005v-.75a1 1 0 011.006-1.005z" />
-                </svg>
-                <span class="text-xl">Admin Dashboard</span>
-            </a>
+        <div class="space-y-4 text-left" id="userFeatures">
+            <!-- User-specific links will be dynamically added here -->
         </div>
     </div>
+
+    <script>
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userFeatures = document.getElementById('userFeatures');
+        const welcomeMessage = document.getElementById('welcomeMessage');
+
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('sessionId');
+            window.location.href = '/';
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const sessionId = localStorage.getItem('sessionId');
+            if (!sessionId) {
+                window.location.href = '/';
+                return;
+            }
+
+            // We need to fetch user data to determine their type
+            fetchUserSession(sessionId);
+        });
+
+        async function fetchUserSession(sessionId) {
+            try {
+                const response = await fetch('/api/get-session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        const { userId, userType } = result.session;
+                        welcomeMessage.textContent = `Welcome, user! Your UserID is ${userId}.`;
+                        
+                        // Dynamically create links based on user type
+                        if (userType === 'citizen') {
+                            renderCitizenLinks();
+                        } else if (userType === 'law enforcement') {
+                            renderLawEnforcementLinks();
+                        } else {
+                            // Default links if userType is not recognized
+                            renderCitizenLinks();
+                        }
+                        
+                        // Add profile link for all users
+                        userFeatures.appendChild(createLink('View Profile', '/profile'));
+
+                    } else {
+                        throw new Error(result.message);
+                    }
+                } else {
+                    throw new Error('Failed to fetch user session.');
+                }
+            } catch (error) {
+                console.error('Error fetching user session:', error);
+                localStorage.removeItem('sessionId');
+                window.location.href = '/';
+            }
+        }
+
+        function createLink(text, href) {
+            const link = document.createElement('a');
+            link.href = href;
+            link.textContent = text;
+            link.className = 'block w-full text-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out';
+            return link;
+        }
+
+        function renderCitizenLinks() {
+            userFeatures.appendChild(createLink('Submit an Extortion Complaint', '/complaint-form'));
+            userFeatures.appendChild(createLink('View My Complaints', '/extortion-reports'));
+            userFeatures.appendChild(createLink('Chat with an Officer', '/chat?caseId=0'));
+        }
+
+        function renderLawEnforcementLinks() {
+            userFeatures.appendChild(createLink('Submit an Extortion Complaint', '/complaint-form'));
+            userFeatures.appendChild(createLink('View All Extortion Reports', '/extortion-reports'));
+            userFeatures.appendChild(createLink('View Report Analysis', '/report-analysis'));
+            userFeatures.appendChild(createLink('Chat with Citizens', '/chat?caseId=0'));
+        }
+    </script>
 </body>
 </html>
