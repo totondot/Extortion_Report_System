@@ -1,10 +1,14 @@
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const mysql = require('mysql');
 const bodyParser = require('body-parser');
 const path = require('path');
 const crypto = require('crypto');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 const port = 3000;
 
 // Middleware
@@ -22,14 +26,34 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'auth.html'));
 });
 
+// Route to serve the user home page
+app.get('/home', (req, res) => {
+    res.sendFile(path.join(__dirname, 'home.html'));
+});
+
 // Route to serve the extortion complaint form at the complaints URL
 app.get('/complaint-form', (req, res) => {
     res.sendFile(path.join(__dirname, 'extortion_complaint.html'));
 });
 
-// New route to serve the home page
-app.get('/home', (req, res) => {
-    res.sendFile(path.join(__dirname, 'home.html'));
+// Route to serve the extortion reports page
+app.get('/extortion-reports', (req, res) => {
+    res.sendFile(path.join(__dirname, 'view-complaints.html'));
+});
+
+// Route to serve the report analysis page
+app.get('/report-analysis', (req, res) => {
+    res.sendFile(path.join(__dirname, 'report-analysis.html'));
+});
+
+// Route to serve the chat page
+app.get('/chat', (req, res) => {
+    res.sendFile(path.join(__dirname, 'chat.html'));
+});
+
+// Route to serve the user profile page
+app.get('/profile', (req, res) => {
+    res.sendFile(path.join(__dirname, 'profile.html'));
 });
 
 // MySQL Connection Pool
@@ -45,7 +69,7 @@ const pool = mysql.createPool({
 app.post('/api/login', (req, res) => {
     const { email, password } = req.body;
 
-    const sql = 'SELECT UserID, Name FROM User WHERE Email = ? AND Password = ?';
+    const sql = 'SELECT UserID, Name, UserType FROM User WHERE Email = ? AND Password = ?';
     const values = [email, password];
 
     pool.getConnection((err, connection) => {
@@ -64,11 +88,10 @@ app.post('/api/login', (req, res) => {
             if (results.length > 0) {
                 const user = results[0];
                 const sessionId = crypto.randomUUID();
-                sessions[sessionId] = { userId: user.UserID };
+                sessions[sessionId] = { userId: user.UserID, userType: user.UserType };
 
                 console.log('User logged in successfully:', user.Name);
-                // Return a redirectTo field to be handled by the client-side JavaScript
-                res.status(200).json({ success: true, message: 'Login successful!', userId: user.UserID, sessionId, redirectTo: '/home' });
+                res.status(200).json({ success: true, message: 'Login successful!', redirectTo: '/home', sessionId });
             } else {
                 res.status(401).json({ success: false, message: 'Invalid email or password.' });
             }
@@ -78,7 +101,7 @@ app.post('/api/login', (req, res) => {
 
 // API endpoint to handle signup
 app.post('/api/signup', (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, password, userType } = req.body;
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -100,8 +123,8 @@ app.post('/api/signup', (req, res) => {
                 return res.status(409).json({ success: false, message: 'Email already registered.' });
             }
 
-            const sql = 'INSERT INTO User (Name, Email, Password) VALUES (?, ?, ?)';
-            const values = [name, email, password];
+            const sql = 'INSERT INTO User (Name, Email, Password, UserType) VALUES (?, ?, ?, ?)';
+            const values = [name, email, password, userType];
 
             connection.query(sql, values, (err, result) => {
                 connection.release();
@@ -151,6 +174,311 @@ app.post('/api/submit-complaint', (req, res) => {
     });
 });
 
-app.listen(port, () => {
+// API endpoint to handle session retrieval
+app.post('/api/get-session', (req, res) => {
+    const { sessionId } = req.body;
+    const session = sessions[sessionId];
+
+    if (session) {
+        res.status(200).json({ success: true, session });
+    } else {
+        res.status(404).json({ success: false, message: 'Session not found.' });
+    }
+});
+
+// API endpoint to retrieve user profile data
+app.post('/api/get-user-profile', (req, res) => {
+    const { sessionId } = req.body;
+    const session = sessions[sessionId];
+
+    if (!session) {
+        return res.status(401).json({ success: false, message: 'Unauthorized: No active session.' });
+    }
+
+    const userId = session.userId;
+    const sql = 'SELECT UserID, Name, Email FROM User WHERE UserID = ?';
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            return res.status(500).json({ success: false, message: 'Database connection error.' });
+        }
+
+        connection.query(sql, [userId], (err, results) => {
+            connection.release();
+            if (err) {
+                console.error('Error querying database for user profile:', err);
+                return res.status(500).json({ success: false, message: 'Failed to retrieve user data.' });
+            }
+
+            if (results.length > 0) {
+                res.status(200).json({ success: true, user: results[0] });
+            } else {
+                res.status(404).json({ success: false, message: 'User not found.' });
+            }
+        });
+    });
+});
+
+// API endpoint to retrieve all reports with status
+app.post('/api/my-complaints', (req, res) => {
+    const { sessionId } = req.body;
+    const session = sessions[sessionId];
+
+    if (!session) {
+        return res.status(401).json({ success: false, message: 'Unauthorized: No active session.' });
+    }
+
+    const sql = `
+        SELECT
+            C.CaseID,
+            C.UserID,
+            C.ReportDate,
+            C.IncidentDate,
+            C.Location,
+            C.Description,
+            COALESCE(S.Status, 'Pending') AS Status
+        FROM
+            \`Case\` AS C
+        LEFT JOIN
+            CaseStatus AS S ON C.CaseID = S.CaseID
+    `;
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            return res.status(500).json({ success: false, message: 'Database connection error.' });
+        }
+        connection.query(sql, (err, results) => {
+            connection.release();
+            if (err) {
+                console.error('Error querying database:', err);
+                return res.status(500).json({ success: false, message: 'Failed to retrieve complaints.' });
+            }
+            res.status(200).json({ success: true, complaints: results, userType: session.userType, userId: session.userId });
+        });
+    });
+});
+
+// API endpoint to handle complaint deletion
+app.post('/api/delete-complaint', (req, res) => {
+    const { caseId, sessionId } = req.body;
+    const session = sessions[sessionId];
+
+    if (!session) {
+        return res.status(401).json({ success: false, message: 'Unauthorized: No active session.' });
+    }
+
+    const { userId } = session;
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            return res.status(500).json({ success: false, message: 'Database connection error.' });
+        }
+
+        connection.beginTransaction(err => {
+            if (err) {
+                connection.release();
+                console.error('Error starting transaction:', err);
+                return res.status(500).json({ success: false, message: 'Failed to delete complaint.' });
+            }
+
+            const verifySql = 'SELECT UserID FROM `Case` WHERE CaseID = ?';
+            connection.query(verifySql, [caseId], (err, results) => {
+                if (err) {
+                    return connection.rollback(() => {
+                        connection.release();
+                        console.error('Error verifying complaint ownership:', err);
+                        res.status(500).json({ success: false, message: 'Failed to delete complaint.' });
+                    });
+                }
+
+                if (results.length === 0 || results[0].UserID !== userId) {
+                    return connection.rollback(() => {
+                        connection.release();
+                        res.status(403).json({ success: false, message: 'Forbidden: You can only delete your own complaints.' });
+                    });
+                }
+
+                const deleteStatusSql = 'DELETE FROM CaseStatus WHERE CaseID = ?';
+                connection.query(deleteStatusSql, [caseId], (err) => {
+                    if (err) {
+                        return connection.rollback(() => {
+                            connection.release();
+                            console.error('Error deleting from CaseStatus:', err);
+                            res.status(500).json({ success: false, message: 'Failed to delete complaint.' });
+                        });
+                    }
+
+                    const deleteCaseSql = 'DELETE FROM `Case` WHERE CaseID = ?';
+                    connection.query(deleteCaseSql, [caseId], (err) => {
+                        if (err) {
+                            return connection.rollback(() => {
+                                connection.release();
+                                console.error('Error deleting from Case:', err);
+                                res.status(500).json({ success: false, message: 'Failed to delete complaint.' });
+                            });
+                        }
+
+                        connection.commit(err => {
+                            if (err) {
+                                return connection.rollback(() => {
+                                    connection.release();
+                                    console.error('Error committing transaction:', err);
+                                    res.status(500).json({ success: false, message: 'Failed to delete complaint.' });
+                                });
+                            }
+                            connection.release();
+                            res.status(200).json({ success: true, message: 'Complaint deleted successfully.' });
+                        });
+                    });
+                });
+            });
+        });
+    });
+});
+
+// API endpoint for updating complaint status
+app.post('/api/update-status', (req, res) => {
+    const { caseId, newStatus, sessionId } = req.body;
+    const session = sessions[sessionId];
+
+    if (!session || session.userType !== 'law enforcement') {
+        return res.status(403).json({ success: false, message: 'Forbidden: Only law enforcement can update case status.' });
+    }
+
+    const sql = "REPLACE INTO `CaseStatus` (CaseID, Status) VALUES (?, ?)";
+    const values = [caseId, newStatus];
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            return res.status(500).json({ success: false, message: 'Database connection error.' });
+        }
+
+        connection.query(sql, values, (err, result) => {
+            connection.release();
+            if (err) {
+                console.error('Error updating case status:', err);
+                return res.status(500).json({ success: false, message: 'Failed to update case status.' });
+            }
+            res.status(200).json({ success: true, message: 'Case status updated successfully.' });
+        });
+    });
+});
+
+// API endpoint for report analysis by location
+app.get('/api/report-analysis', (req, res) => {
+    const sql = `
+        SELECT Location, COUNT(*) as reportCount
+        FROM \`Case\`
+        GROUP BY Location
+    `;
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            return res.status(500).json({ success: false, message: 'Database connection error.' });
+        }
+
+        connection.query(sql, (err, results) => {
+            connection.release();
+            if (err) {
+                console.error('Error querying database:', err);
+                return res.status(500).json({ success: false, message: 'Failed to retrieve report analysis data.' });
+            }
+            res.status(200).json({ success: true, data: results });
+        });
+    });
+});
+
+// API endpoint for report analysis by status
+app.get('/api/report-status-analysis', (req, res) => {
+    const sql = `
+        SELECT COALESCE(S.Status, 'Pending') AS Status, COUNT(*) AS reportCount
+        FROM \`Case\` AS C
+        LEFT JOIN CaseStatus AS S ON C.CaseID = S.CaseID
+        GROUP BY S.Status
+    `;
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            return res.status(500).json({ success: false, message: 'Database connection error.' });
+        }
+
+        connection.query(sql, (err, results) => {
+            connection.release();
+            if (err) {
+                console.error('Error querying database:', err);
+                return res.status(500).json({ success: false, message: 'Failed to retrieve report status analysis data.' });
+            }
+            res.status(200).json({ success: true, data: results });
+        });
+    });
+});
+
+// Socket.IO event handling
+io.on('connection', (socket) => {
+    console.log('A user connected:', socket.id);
+
+    // When a user joins a chat, they join a specific room
+    socket.on('joinCase', (caseId) => {
+        socket.join(caseId);
+        console.log(`User ${socket.id} joined chat room: ${caseId}`);
+        
+        // Fetch and send the chat history for this case
+        const sql = `
+            SELECT SenderType, Message FROM ChatMessages WHERE CaseID = ? ORDER BY Timestamp ASC
+        `;
+        pool.getConnection((err, connection) => {
+            if (err) {
+                console.error('Error getting connection from pool:', err);
+                return;
+            }
+            connection.query(sql, [caseId], (err, messages) => {
+                connection.release();
+                if (err) {
+                    console.error('Error fetching chat history:', err);
+                    return;
+                }
+                socket.emit('chatHistory', messages);
+            });
+        });
+    });
+
+    // When a new message is received
+    socket.on('sendMessage', (data) => {
+        const { caseId, senderType, message } = data;
+        
+        // Save the message to the database
+        const sql = `
+            INSERT INTO ChatMessages (CaseID, SenderType, Message)
+            VALUES (?, ?, ?)
+        `;
+        pool.getConnection((err, connection) => {
+            if (err) {
+                console.error('Error getting connection from pool:', err);
+                return;
+            }
+            connection.query(sql, [caseId, senderType, message], (err, result) => {
+                connection.release();
+                if (err) {
+                    console.error('Error saving message to database:', err);
+                    return;
+                }
+                // Broadcast the message to all users in the same case room
+                io.to(caseId).emit('newMessage', { senderType, message });
+            });
+        });
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected:', socket.id);
+    });
+});
+
+server.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
 });
