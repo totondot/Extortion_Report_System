@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extortion Report Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .chat-message.user {
+            background-color: #dbeafe; /* Tailwind: blue-100 */
+            align-self: flex-end;
+            text-align: right;
+            border-bottom-right-radius: 0;
+        }
+        .chat-message.officer {
+            background-color: #e5e7eb; /* Tailwind: gray-200 */
+            align-self: flex-start;
+            text-align: left;
+            border-bottom-left-radius: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col p-4">
+    <div class="flex-grow flex flex-col items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-lg w-full max-w-2xl flex flex-col h-[80vh]">
+            <header class="bg-gray-800 text-white p-4 rounded-t-2xl flex justify-between items-center">
+                <h1 id="chatHeader" class="text-xl font-bold">Chat</h1>
+                <button onclick="window.history.back()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded-lg transition duration-150 ease-in-out text-sm">
+                    Go Back
+                </button>
+            </header>
+            
+            <div id="messages" class="flex-grow p-4 overflow-y-auto space-y-4">
+                <p id="loading" class="text-center text-gray-500">Connecting to chat...</p>
+            </div>
+
+            <form id="chatForm" class="p-4 bg-gray-100 border-t border-gray-200 flex items-center rounded-b-2xl">
+                <input type="text" id="messageInput" placeholder="Type a message..." class="flex-grow p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+                <button type="submit" class="ml-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150 ease-in-out">
+                    Send
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const params = new URLSearchParams(window.location.search);
+            const caseId = params.get('caseId');
+            const sessionId = localStorage.getItem('sessionId');
+            
+            if (!caseId || !sessionId) {
+                console.error('Invalid chat session. Please go back to reports.');
+                window.location.href = '/extortion-reports';
+                return;
+            }
+
+            // Differentiate between general chat and case-specific chat
+            if (caseId === '0') {
+                document.getElementById('chatHeader').textContent = 'General Chat with Law Enforcement';
+            } else {
+                document.getElementById('chatHeader').textContent = `Chat for Case #${caseId}`;
+            }
+
+            const messagesContainer = document.getElementById('messages');
+            const messageInput = document.getElementById('messageInput');
+            const chatForm = document.getElementById('chatForm');
+            const loadingIndicator = document.getElementById('loading');
+            
+            // Connect to Socket.IO server
+            const socket = io();
+
+            let userType = '';
+            
+            async function fetchUserType() {
+                try {
+                    const response = await fetch('/api/get-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sessionId })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        userType = result.session.userType;
+                        return true;
+                    } else {
+                        console.error('Failed to get user session.');
+                        return false;
+                    }
+                } catch (error) {
+                    console.error('Error fetching user type:', error);
+                    return false;
+                }
+            }
+            
+            // Function to add a message to the UI
+            function addMessageToUI(msg) {
+                const messageDiv = document.createElement('div');
+                const isUser = msg.senderType.toLowerCase() === userType.toLowerCase();
+                messageDiv.className = `chat-message p-3 rounded-xl max-w-[75%] shadow ${isUser ? 'user' : 'officer'}`;
+                messageDiv.textContent = msg.message;
+                messagesContainer.appendChild(messageDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            const isSessionValid = await fetchUserType();
+            if (!isSessionValid) {
+                window.location.href = '/';
+                return;
+            }
+            
+            loadingIndicator.style.display = 'none';
+
+            // Emit a 'joinCase' event to join the specific chat room
+            socket.emit('joinCase', caseId);
+
+            // Listen for 'chatHistory' event to load initial messages
+            socket.on('chatHistory', (messages) => {
+                messagesContainer.innerHTML = ''; // Clear previous messages
+                messages.forEach(msg => {
+                    // Normalize the object keys to match the new newMessage event
+                    addMessageToUI({ senderType: msg.SenderType, message: msg.Message });
+                });
+            });
+
+            // Listen for 'newMessage' event for real-time updates
+            socket.on('newMessage', (msg) => {
+                addMessageToUI(msg);
+            });
+
+            chatForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const message = messageInput.value.trim();
+                if (!message) return;
+
+                // Emit the new message to the server
+                socket.emit('sendMessage', { caseId, senderType: userType, message });
+                
+                messageInput.value = '';
+            });
+        });
+    </script>
+</body>
+</html>
