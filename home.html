@@ -24,8 +24,7 @@
         <p class="text-gray-600 mb-6" id="welcomeMessage">You are logged in.</p>
 
         <div class="space-y-4 text-left" id="userFeatures">
-            <!-- User-specific links will be dynamically added here -->
-        </div>
+            </div>
     </div>
 
     <script>
@@ -45,7 +44,6 @@
                 return;
             }
 
-            // We need to fetch user data to determine their type
             fetchUserSession(sessionId);
         });
 
@@ -63,17 +61,14 @@
                         const { userId, userType } = result.session;
                         welcomeMessage.textContent = `Welcome, user! Your UserID is ${userId}.`;
                         
-                        // Dynamically create links based on user type
                         if (userType === 'citizen') {
                             renderCitizenLinks();
                         } else if (userType === 'law enforcement') {
                             renderLawEnforcementLinks();
                         } else {
-                            // Default links if userType is not recognized
                             renderCitizenLinks();
                         }
                         
-                        // Add profile link for all users
                         userFeatures.appendChild(createLink('View Profile', '/profile'));
 
                     } else {
@@ -89,26 +84,71 @@
             }
         }
 
-        function createLink(text, href) {
+        function createLink(text, href, action = 'redirect') {
             const link = document.createElement('a');
-            link.href = href;
             link.textContent = text;
             link.className = 'block w-full text-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out';
+            
+            if (action === 'redirect') {
+                link.href = href;
+            } else if (action === 'create-chat') {
+                link.href = '#'; // Prevent default navigation
+                link.addEventListener('click', createNewChatAndRedirect);
+            }
+
             return link;
+        }
+
+        async function createNewChatAndRedirect(event) {
+            event.preventDefault(); // Stop the link from navigating immediately
+            const sessionId = localStorage.getItem('sessionId');
+
+            try {
+                const response = await fetch('/api/create-new-chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    window.location.href = `/chat?caseId=${result.caseId}`;
+                } else {
+                    console.error('Failed to create new chat:', result.message);
+                    alert('Failed to start a new chat. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error starting new chat:', error);
+                alert('An error occurred. Please try again later.');
+            }
         }
 
         function renderCitizenLinks() {
             userFeatures.appendChild(createLink('Submit an Extortion Complaint', '/complaint-form'));
             userFeatures.appendChild(createLink('View My Complaints', '/extortion-reports'));
-            userFeatures.appendChild(createLink('Chat with an Officer', '/chat?caseId=0'));
+            userFeatures.appendChild(createLink('Chat with an Officer', '#', 'create-chat'));
+            userFeatures.appendChild(createLink('Emergency Alert', '/emergency-alert'));
+            userFeatures.appendChild(createLink('Submit a Success Story', '/submit-success-story'));
+            userFeatures.appendChild(createLink('View Success Stories', '/success-stories'));
+            userFeatures.appendChild(createLink('Legal Awareness Content', '/legal-awareness'));
         }
 
         function renderLawEnforcementLinks() {
             userFeatures.appendChild(createLink('Submit an Extortion Complaint', '/complaint-form'));
             userFeatures.appendChild(createLink('View All Extortion Reports', '/extortion-reports'));
             userFeatures.appendChild(createLink('View Report Analysis', '/report-analysis'));
-            userFeatures.appendChild(createLink('Chat with Citizens', '/chat?caseId=0'));
+            userFeatures.appendChild(createLink('View Emergency Alerts', '/view-emergency-alerts'));
+            userFeatures.appendChild(createLink('View Success Stories', '/success-stories'));
+            // userFeatures.appendChild(createLink('Chat with Citizens', '#', 'create-chat'));
+            userFeatures.appendChild(createLink('Legal Awareness Content', '/legal-awareness'));
         }
     </script>
+<div id="google_translate_element"></div>
+<script type="text/javascript">
+function googleTranslateElementInit() {
+new google.translate.TranslateElement({pageLanguage: 'en', includedLanguages: 'bn,es,fr,ur'}, 'google_translate_element');
+}
+</script>
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>
