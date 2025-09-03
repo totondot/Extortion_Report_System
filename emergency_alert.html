@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Alert</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom animation for the pulsing button */
+        @keyframes pulse-red {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 20px rgba(220, 38, 38, 0);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-900 flex flex-col items-center justify-center min-h-screen text-white p-4">
+
+    <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl text-center max-w-lg w-full">
+        
+        <div class="mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold mb-2">Emergency Alert</h1>
+            <p class="text-gray-400">Press the button below to send a distress signal with your location.</p>
+        </div>
+
+        <button id="alertButton"
+            class="w-full h-48 bg-red-700 text-white font-extrabold text-3xl rounded-full shadow-lg transition duration-300 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-500 focus:ring-opacity-50">
+            EMERGENCY ALERT
+        </button>
+
+        <div id="statusMessage" class="mt-8 text-lg font-medium">
+            <p>Ready to send.</p>
+        </div>
+
+        <div id="locationDisplay" class="mt-4 text-sm text-gray-400">
+            </div>
+
+    </div>
+
+    <div id="alertBox" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl w-80 text-center">
+            <h3 id="alertTitle" class="text-xl font-bold mb-2 text-white"></h3>
+            <p id="alertBody" class="text-gray-400 mb-4"></p>
+            <button id="alertCloseButton" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-full hover:bg-blue-700 transition duration-300">OK</button>
+        </div>
+    </div>
+
+
+    <script>
+        const alertButton = document.getElementById('alertButton');
+        const statusMessage = document.getElementById('statusMessage');
+        const locationDisplay = document.getElementById('locationDisplay');
+        const alertBox = document.getElementById('alertBox');
+        const alertTitle = document.getElementById('alertTitle');
+        const alertBody = document.getElementById('alertBody');
+        const alertCloseButton = document.getElementById('alertCloseButton');
+
+        // Show a custom alert box instead of window.alert()
+        function showCustomAlert(title, body) {
+            alertTitle.textContent = title;
+            alertBody.textContent = body;
+            alertBox.classList.remove('hidden');
+            alertBox.classList.add('flex');
+        }
+
+        // Hide the custom alert box
+        alertCloseButton.addEventListener('click', () => {
+            alertBox.classList.remove('flex');
+            alertBox.classList.add('hidden');
+        });
+        
+        // Main function to trigger the emergency alert
+        function triggerAlert() {
+            const sessionId = localStorage.getItem('sessionId');
+            if (!sessionId) {
+                showCustomAlert('Not Logged In', 'You must be logged in to send an emergency alert. Please log in and try again.');
+                return;
+            }
+
+            // Check if Geolocation is supported by the browser
+            if (navigator.geolocation) {
+                statusMessage.innerHTML = '<p class="text-yellow-400">Getting your location...</p>';
+                // Add a pulsating animation to indicate action
+                alertButton.style.animation = 'pulse-red 2s infinite';
+                
+                // Get the current position
+                navigator.geolocation.getCurrentPosition(onSuccess, onError);
+
+            } else {
+                showCustomAlert('Location Error', 'Geolocation is not supported by your browser.');
+                statusMessage.innerHTML = '<p class="text-red-500">Geolocation is not supported.</p>';
+            }
+        }
+
+        // Success callback for Geolocation
+        async function onSuccess(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            const sessionId = localStorage.getItem('sessionId');
+
+            // Display the coordinates
+            locationDisplay.innerHTML = `
+                <p>Latitude: <span class="text-green-400 font-bold">${latitude}</span></p>
+                <p>Longitude: <span class="text-green-400 font-bold">${longitude}</span></p>
+            `;
+
+            statusMessage.innerHTML = '<p class="text-yellow-400">Sending distress signal...</p>';
+            
+            try {
+                const response = await fetch('/api/emergency-alert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ latitude, longitude, sessionId })
+                });
+
+                const result = await response.json();
+
+                alertButton.style.animation = 'none'; // Stop the animation
+                alertButton.classList.remove('bg-red-700');
+                
+                if (response.ok) {
+                    alertButton.classList.add('bg-green-600');
+                    statusMessage.innerHTML = '<p class="text-green-500">Distress signal sent successfully!</p>';
+                    showCustomAlert('Alert Sent', result.message || 'An emergency signal with your location has been sent.');
+                } else {
+                    alertButton.classList.add('bg-red-700');
+                    statusMessage.innerHTML = '<p class="text-red-500">Failed to send alert.</p>';
+                    showCustomAlert('Alert Failed', result.message || 'An error occurred while sending the signal. Please try again.');
+                }
+            } catch (error) {
+                console.error("Error sending alert:", error);
+                alertButton.style.animation = 'none';
+                alertButton.classList.add('bg-red-700');
+                statusMessage.innerHTML = '<p class="text-red-500">Network error. Failed to send alert.</p>';
+                showCustomAlert('Network Error', 'Could not connect to the server. Please check your internet connection and try again.');
+            }
+        }
+
+        // Error callback for Geolocation
+        function onError(error) {
+            alertButton.style.animation = 'none'; // Stop the animation
+            let errorMessage = "An unknown error occurred.";
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMessage = "Location access was denied. Please enable it in your browser settings to use this feature.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMessage = "Location information is currently unavailable.";
+                    break;
+                case error.TIMEOUT:
+                    errorMessage = "The request to get user location timed out.";
+                    break;
+            }
+            showCustomAlert('Location Error', errorMessage);
+            statusMessage.innerHTML = `<p class="text-red-500">${errorMessage}</p>`;
+        }
+
+        // Add event listener to the button
+        alertButton.addEventListener('click', triggerAlert);
+    </script>
+<div id="google_translate_element"></div>
+<script type="text/javascript">
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({pageLanguage: 'en', includedLanguages: 'bn,es,fr,hi,ur,bn'}, 'google_translate_element');
+}
+</script>
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</body>
+</html>
