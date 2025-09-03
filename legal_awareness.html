@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legal Awareness</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .link-card:hover .link-title {
+            color: #4338ca;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4">
+
+    <div class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-4xl mx-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Legal Awareness</h1>
+            <button onclick="window.history.back()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-150 ease-in-out">
+                Back to Home
+            </button>
+        </div>
+        <p class="text-gray-600 mb-6">Explore articles, laws, and FAQs to better understand your rights and legal options.</p>
+
+        <div id="legal-resources-list" class="space-y-6">
+            <p id="loading" class="text-center text-gray-500">Loading legal resources...</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', fetchLegalResources);
+
+        async function fetchLegalResources() {
+            const resourcesList = document.getElementById('legal-resources-list');
+            resourcesList.innerHTML = '<p id="loading" class="text-center text-gray-500">Loading legal resources...</p>';
+
+            try {
+                const response = await fetch('/api/legal-resources');
+                const resources = await response.json();
+                
+                if (resources.length > 0) {
+                    resourcesList.innerHTML = ''; // Clear loading message
+                    resources.forEach(resource => {
+                        const resourceCard = document.createElement('a');
+                        resourceCard.href = resource.url;
+                        resourceCard.target = '_blank';
+                        resourceCard.className = 'link-card block bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-300';
+                        
+                        resourceCard.innerHTML = `
+                            <div class="flex items-start space-x-4">
+                                <img src="${resource.imageUrl}" alt="Image related to ${resource.title}" class="w-24 h-24 object-cover rounded-lg flex-shrink-0">
+                                <div class="flex-grow">
+                                    <h3 class="link-title text-xl font-semibold text-gray-800 mb-2 transition-colors duration-200">${resource.title}</h3>
+                                    <p class="text-gray-600">${resource.description}</p>
+                                </div>
+                            </div>
+                        `;
+                        resourcesList.appendChild(resourceCard);
+                    });
+                } else {
+                    resourcesList.innerHTML = '<p class="text-center text-gray-500">No legal resources found at this time.</p>';
+                }
+            } catch (error) {
+                console.error('Error fetching legal resources:', error);
+                resourcesList.innerHTML = `<p class="text-center text-red-500">Error loading legal resources. Please try again later.</p>`;
+            }
+        }
+    </script>
+<div id="google_translate_element"></div>
+<script type="text/javascript">
+function googleTranslateElementInit() {
+new google.translate.TranslateElement({pageLanguage: 'en', includedLanguages: 'bn,es,fr,hi,ur,bn'}, 'google_translate_element');
+}
+</script>
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</body>
+</html>
