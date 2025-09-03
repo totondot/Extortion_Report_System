@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Success Stories</title>
+    <!-- Use Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <!-- Main container for the success stories section -->
+    <div class="container mx-auto p-6 md:p-10 bg-white rounded-xl shadow-lg max-w-4xl w-full">
+
+        <header class="text-center mb-10">
+            <div class="flex justify-between items-center mb-4">
+                <button onclick="window.location.href = '/home'" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-150 ease-in-out">
+                    Back to Home
+                </button>
+            </div>
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2">Success Stories</h1>
+            <p class="text-lg text-gray-600">Explore solved cases and the actions taken to resolve them.</p>
+        </header>
+
+        <!-- Container for the success story cards -->
+        <div id="stories-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Story cards will be dynamically inserted here by JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        // Helper function to create a story card element
+        function renderStory(story) {
+            const storyCard = document.createElement('div');
+            storyCard.className = 'bg-gray-50 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300';
+            storyCard.innerHTML = `
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">${story.Title}</h3>
+                <p class="text-gray-600 text-sm mb-4">${story.Story}</p>
+                <div class="text-xs text-gray-500">
+                    <p><strong>Case ID:</strong> ${story.CaseID}</p>
+                    <p><strong>Date Resolved:</strong> ${new Date(story.DateAdded).toLocaleDateString()}</p>
+                </div>
+            `;
+
+            return storyCard;
+        }
+
+        // Main function to fetch and display stories from the server
+        async function fetchStories() {
+            const storiesContainer = document.getElementById('stories-container');
+            storiesContainer.innerHTML = '<p id="loading-message" class="text-center text-gray-500 col-span-full">Loading success stories...</p>';
+
+            try {
+                // Fetch data from the new server endpoint
+                const response = await fetch('/api/success-stories');
+                const stories = await response.json();
+
+                if (stories.length > 0) {
+                    storiesContainer.innerHTML = ''; // Clear loading message
+                    stories.forEach(story => {
+                        storiesContainer.appendChild(renderStory(story));
+                    });
+                } else {
+                    storiesContainer.innerHTML = '<p class="text-center text-gray-500 col-span-full">No success stories found yet. Check back later!</p>';
+                }
+
+            } catch (error) {
+                console.error("Error fetching stories:", error);
+                storiesContainer.innerHTML = `<p class="text-center text-red-500 col-span-full">Error loading stories: ${error.message}</p>`;
+            }
+        }
+
+        // Start the process when the page loads
+        document.addEventListener('DOMContentLoaded', fetchStories);
+    </script>
+<div id="google_translate_element"></div>
+<script type="text/javascript">
+function googleTranslateElementInit() {
+new google.translate.TranslateElement({pageLanguage: 'en', includedLanguages: 'bn,es,fr,hi,ur,bn'}, 'google_translate_element');
+}
+</script>
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</body>
+</html>
