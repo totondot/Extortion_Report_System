@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Alerts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        .alert-card {
+            background-color: #fff;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1rem;
+        }
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .alert-user {
+            font-weight: 600;
+            color: #4f46e5;
+        }
+        .alert-timestamp {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        #alertsMap {
+            width: 100%;
+            height: 500px;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="flex items-center mb-6">
+            <a href="/home" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-150 ease-in-out">
+                Go Back
+            </a>
+            <h1 class="text-3xl font-bold text-gray-800 text-center flex-grow">Emergency Alerts</h1>
+        </div>
+        <div id="alertsMap"></div>
+        <div id="alertsList" class="mt-8"></div>
+    </div>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=&callback=initMap" async defer></script>
+    <script>
+        const API_KEY = ""; // Google Maps API key will be provided in runtime
+        let map;
+        let markers = [];
+
+        async function initMap() {
+            try {
+                const mapOptions = {
+                    center: { lat: 0, lng: 0 },
+                    zoom: 2,
+                };
+                map = new google.maps.Map(document.getElementById("alertsMap"), mapOptions);
+                fetchAlertsAndRender();
+            } catch (error) {
+                console.error('Failed to initialize Google Maps:', error);
+            }
+        }
+
+        async function fetchAlertsAndRender() {
+            try {
+                const response = await fetch('/api/emergency-alerts');
+                const result = await response.json();
+
+                if (result.success) {
+                    renderAlerts(result.alerts);
+                    addMarkersToMap(result.alerts);
+                } else {
+                    console.error('Failed to fetch emergency alerts:', result.message);
+                }
+            } catch (error) {
+                console.error('Error fetching alerts:', error);
+            }
+        }
+
+        function renderAlerts(alerts) {
+            const alertsList = document.getElementById('alertsList');
+            alertsList.innerHTML = '';
+            if (alerts.length === 0) {
+                alertsList.innerHTML = '<p class="text-center text-gray-500">No emergency alerts found.</p>';
+                return;
+            }
+
+            alerts.forEach(alert => {
+                const alertCard = document.createElement('div');
+                alertCard.className = 'alert-card';
+                alertCard.innerHTML = `
+                    <div class="alert-header">
+                        <span class="alert-user">User ID: ${alert.UserID}</span>
+                        <span class="alert-timestamp">Alerted on: ${new Date(alert.Timestamp).toLocaleString()}</span>
+                    </div>
+                    <p>Latitude: ${alert.Latitude}, Longitude: ${alert.Longitude}</p>
+                `;
+                alertsList.appendChild(alertCard);
+            });
+        }
+
+        function addMarkersToMap(alerts) {
+            // Clear existing markers
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+
+            if (alerts.length > 0) {
+                const bounds = new google.maps.LatLngBounds();
+                alerts.forEach(alert => {
+                    const position = { lat: parseFloat(alert.Latitude), lng: parseFloat(alert.Longitude) };
+                    const marker = new google.maps.Marker({
+                        position: position,
+                        map: map,
+                        title: `User: ${alert.UserID}`,
+                    });
+                    markers.push(marker);
+                    bounds.extend(position);
+                });
+                map.fitBounds(bounds);
+            }
+        }
+    </script>
+<div id="google_translate_element"></div>
+<script type="text/javascript">
+function googleTranslateElementInit() {
+new google.translate.TranslateElement({pageLanguage: 'en', includedLanguages: 'bn,es,fr,hi,ur,bn'}, 'google_translate_element');
+}
+</script>
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</body>
+</html>
