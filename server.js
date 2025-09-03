@@ -56,6 +56,31 @@ app.get('/profile', (req, res) => {
     res.sendFile(path.join(__dirname, 'profile.html'));
 });
 
+// Route to serve the emergency alert page
+app.get('/emergency-alert', (req, res) => {
+    res.sendFile(path.join(__dirname, 'emergency_alert.html'));
+});
+
+// Route to serve the view-emergency-alerts page
+app.get('/view-emergency-alerts', (req, res) => {
+    res.sendFile(path.join(__dirname, 'view-emergency-alerts.html'));
+});
+
+// Route to serve the success-stories page
+app.get('/success-stories', (req, res) => {
+    res.sendFile(path.join(__dirname, 'success_stories.html'));
+});
+
+// Route to serve the success story submission page
+app.get('/submit-success-story', (req, res) => {
+    res.sendFile(path.join(__dirname, 'submit_success_story.html'));
+});
+
+// Route to serve the legal awareness page 🆕
+app.get('/legal-awareness', (req, res) => {
+    res.sendFile(path.join(__dirname, 'legal_awareness.html'));
+});
+
 // MySQL Connection Pool
 const pool = mysql.createPool({
     connectionLimit: 10,
@@ -368,6 +393,102 @@ app.post('/api/update-status', (req, res) => {
     });
 });
 
+// API endpoint for emergency alerts
+app.post('/api/emergency-alert', (req, res) => {
+    const { latitude, longitude, sessionId } = req.body;
+    const session = sessions[sessionId];
+
+    if (!session) {
+        return res.status(401).json({ success: false, message: 'Unauthorized: No active session.' });
+    }
+
+    const userId = session.userId;
+    const sql = `
+        INSERT INTO EmergencyAlerts (UserID, Latitude, Longitude, Timestamp)
+        VALUES (?, ?, ?, NOW())
+    `;
+    const values = [userId, latitude, longitude];
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            return res.status(500).json({ success: false, message: 'Database connection error.' });
+        }
+
+        connection.query(sql, values, (err, result) => {
+            connection.release();
+            if (err) {
+                console.error('Error inserting emergency alert:', err);
+                return res.status(500).json({ success: false, message: 'Failed to log emergency alert.' });
+            }
+            res.status(200).json({ success: true, message: 'Emergency alert logged successfully.' });
+        });
+    });
+});
+
+// API endpoint to handle success story submission
+app.post('/api/submit-success-story', (req, res) => {
+    const { title, story, caseId, sessionId } = req.body;
+    const session = sessions[sessionId];
+
+    if (!session || session.userType !== 'citizen') {
+        return res.status(403).json({ success: false, message: 'Forbidden: Only citizens can submit success stories.' });
+    }
+
+    // Check if the caseId exists and belongs to the user
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            return res.status(500).json({ success: false, message: 'Database connection error.' });
+        }
+
+        const verifySql = 'SELECT UserID FROM `Case` WHERE CaseID = ? AND UserID = ?';
+        connection.query(verifySql, [caseId, session.userId], (err, results) => {
+            if (err) {
+                connection.release();
+                console.error('Error verifying case ownership:', err);
+                return res.status(500).json({ success: false, message: 'Failed to verify case.' });
+            }
+
+            if (results.length === 0) {
+                connection.release();
+                return res.status(403).json({ success: false, message: 'You can only submit stories for your own valid cases.' });
+            }
+
+            // Insert the new success story
+            const insertSql = 'INSERT INTO SuccessStories (Title, Story, CaseID, DateAdded) VALUES (?, ?, ?, CURDATE())';
+            connection.query(insertSql, [title, story, caseId], (err, result) => {
+                connection.release();
+                if (err) {
+                    console.error('Error inserting success story:', err);
+                    return res.status(500).json({ success: false, message: 'Failed to submit success story.' });
+                }
+                res.status(200).json({ success: true, message: 'Success story submitted successfully!' });
+            });
+        });
+    });
+});
+
+// API endpoint to retrieve all emergency alerts
+app.get('/api/emergency-alerts', (req, res) => {
+    const sql = `SELECT UserID, Latitude, Longitude, Timestamp FROM EmergencyAlerts ORDER BY Timestamp DESC`;
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            return res.status(500).json({ success: false, message: 'Database connection error.' });
+        }
+        connection.query(sql, (err, results) => {
+            connection.release();
+            if (err) {
+                console.error('Error querying emergency alerts:', err);
+                return res.status(500).json({ success: false, message: 'Failed to retrieve emergency alerts.' });
+            }
+            res.status(200).json({ success: true, alerts: results });
+        });
+    });
+});
+
 // API endpoint for report analysis by location
 app.get('/api/report-analysis', (req, res) => {
     const sql = `
@@ -419,6 +540,94 @@ app.get('/api/report-status-analysis', (req, res) => {
     });
 });
 
+// API endpoint for retrieving success stories
+app.get('/api/success-stories', (req, res) => {
+    const sql = `
+        SELECT * FROM SuccessStories ORDER BY DateAdded DESC
+    `;
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            return res.status(500).json({ success: false, message: 'Database connection error.' });
+        }
+
+        connection.query(sql, (err, results) => {
+            connection.release();
+            if (err) {
+                console.error('Error querying success stories:', err);
+                return res.status(500).json({ success: false, message: 'Failed to retrieve success stories.' });
+            }
+            res.status(200).json(results);
+        });
+    });
+});
+
+// API endpoint to serve hardcoded legal resources 🆕
+app.get('/api/legal-resources', (req, res) => {
+    const legalResources = [
+        {
+            title: "What is Extortion?",
+            description: "An overview of what constitutes the crime of extortion under the law.",
+            url: "https://www.law.cornell.edu/wex/extortion",
+            imageUrl: "https://images.unsplash.com/photo-1579203678036-2244243b7473"
+        },
+        {
+            title: "Your Rights as a Citizen",
+            description: "Learn about your fundamental rights and protections when interacting with law enforcement.",
+            url: "https://www.aclu.org/know-your-rights",
+            imageUrl: "https://images.unsplash.com/photo-1590240974868-b71887e2213d"
+        },
+        {
+            title: "Cybercrime Laws",
+            description: "A summary of key laws and regulations aimed at preventing and prosecuting cybercrimes.",
+            url: "https://www.justice.gov/criminal-ccips/data-privacy-and-security",
+            imageUrl: "https://images.unsplash.com/photo-1510511459019-517361840000"
+        },
+        {
+            title: "How to Report a Crime",
+            description: "Step-by-step guidance on the proper procedures for reporting a crime to authorities.",
+            url: "https://www.usa.gov/report-crime",
+            imageUrl: "https://images.unsplash.com/photo-1574888879611-e40ae466e33f"
+        }
+    ];
+    res.status(200).json(legalResources);
+});
+// API endpoint to create a new case specifically for a chat
+app.post('/api/create-new-chat', (req, res) => {
+    const { sessionId } = req.body;
+
+    const session = sessions[sessionId];
+    if (!session) {
+        return res.status(401).json({ success: false, message: 'Unauthorized: No active session.' });
+    }
+
+    const userId = session.userId;
+    const reportDate = new Date().toISOString().slice(0, 10);
+    const description = "Chat with Officer";
+    const location = "N/A"; // Location is not relevant for chat cases
+
+    const sql = 'INSERT INTO `Case` (UserID, ReportDate, IncidentDate, Description, Location) VALUES (?, ?, ?, ?, ?)';
+    const values = [userId, reportDate, reportDate, description, location];
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            return res.status(500).json({ success: false, message: 'Database connection error.' });
+        }
+
+        connection.query(sql, values, (err, result) => {
+            connection.release();
+            if (err) {
+                console.error('Error creating new chat case:', err);
+                return res.status(500).json({ success: false, message: 'Failed to create new chat session.' });
+            }
+
+            console.log('New chat case created. Case ID:', result.insertId);
+            res.status(200).json({ success: true, caseId: result.insertId, message: 'New chat session created.' });
+        });
+    });
+});
 // Socket.IO event handling
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
