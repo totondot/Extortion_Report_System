@@ -23,7 +23,6 @@
         </div>
 
         <div id="reports-list" class="space-y-6">
-            <!-- Reports will be dynamically added here -->
             <div id="loading" class="text-center text-gray-500">Loading reports...</div>
         </div>
     </div>
@@ -68,6 +67,10 @@
                         const incidentDate = new Date(report.IncidentDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
                         let actionButtons = '';
+                        // Always include the chat button for all users
+                        const chatButton = `<a href="/chat?caseId=${report.CaseID}" class="chat-btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 ease-in-out">Chat</a>`;
+
+                        // Law enforcement sees the status update dropdown
                         if (userType === 'law enforcement') {
                             actionButtons = `
                                 <div class="mt-4 flex items-center space-x-2">
@@ -76,30 +79,49 @@
                                         <option value="Pending" ${report.Status === 'Pending' ? 'selected' : ''}>Pending</option>
                                         <option value="In Progress" ${report.Status === 'In Progress' ? 'selected' : ''}>In Progress</option>
                                         <option value="Closed" ${report.Status === 'Closed' ? 'selected' : ''}>Closed</option>
-                                        <option value="Archived" ${report.Status === 'Archived' ? 'selected' : ''}>Archived</option>
                                     </select>
                                     <button onclick="updateStatus(${report.CaseID})" class="update-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 ease-in-out">
                                         Update
                                     </button>
                                 </div>
+                                <div class="mt-4">
+                                    ${chatButton}
+                                </div>
                             `;
-                        } else if (isOwner) {
+                        } else if (isOwner) { // Citizens can see the delete button for their own complaints
                             actionButtons = `
                                 <div class="mt-4 flex space-x-2">
                                     <button onclick="deleteComplaint(${report.CaseID})" class="delete-btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 ease-in-out">
                                         Delete
                                     </button>
+                                    ${chatButton}
                                 </div>
                             `;
                         }
 
+                        // Determine the background color and text for the status tag
+                        let statusColorClass = '';
+                        switch (report.Status) {
+                            case 'Pending':
+                                statusColorClass = 'bg-yellow-200 text-yellow-800';
+                                break;
+                            case 'In Progress':
+                                statusColorClass = 'bg-blue-200 text-blue-800';
+                                break;
+                            case 'Closed':
+                                statusColorClass = 'bg-green-200 text-green-800';
+                                break;
+                            default:
+                                statusColorClass = 'bg-gray-200 text-gray-800';
+                        }
+                        
                         card.innerHTML = `
                             <h2 class="text-xl font-bold text-gray-800">Report ID: ${report.CaseID}</h2>
                             <p class="text-gray-600 mt-2"><b>Report Date:</b> ${reportDate}</p>
                             <p class="text-gray-600"><b>Incident Date:</b> ${incidentDate}</p>
                             <p class="text-gray-600"><b>Location:</b> ${report.Location}</p>
                             <p class="text-gray-700 mt-4">${report.Description}</p>
-                            <div class="mt-4 px-3 py-1 bg-green-200 text-green-800 rounded-full inline-block">
+                            <div class="mt-4 px-3 py-1 ${statusColorClass} rounded-full inline-block">
                                 <span class="font-semibold">Status:</span> ${report.Status}
                             </div>
                             ${actionButtons}
@@ -156,5 +178,12 @@
             }
         }
     </script>
+<div id="google_translate_element"></div>
+<script type="text/javascript">
+function googleTranslateElementInit() {
+new google.translate.TranslateElement({pageLanguage: 'en', includedLanguages: 'bn,es,fr,hi,ur,bn'}, 'google_translate_element');
+}
+</script>
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>
